@@ -33,32 +33,70 @@ import {
 
 // --- DATA INITIAL (Bahan bawaan pertama kali aplikasi dibuka) ---
 const INITIAL_VEHICLES = [
-  { id: 'v1', plat: 'B 1234 CD', jenis: 'Mobil', merk: 'Toyota Avanza', pengemudi: 'Budi Santoso', status: 'Aktif' },
-  { id: 'v2', plat: 'B 5678 EF', jenis: 'Mobil', merk: 'Daihatsu Xenia', pengemudi: 'Ahmad Supri', status: 'Aktif' },
-  { id: 'v3', plat: 'B 9101 GH', jenis: 'Truk', merk: 'Isuzu Elf', pengemudi: 'Joko Susilo', status: 'Perbaikan' },
-];
+  ];
 
 const INITIAL_TRANSACTIONS = [
-  { id: 't1', kendaraanId: 'v1', tipe: 'setoran', jumlah: 4500000, tanggal: '2026-08-15', keterangan: 'Setoran Bulanan Agustus' },
-  { id: 't2', kendaraanId: 'v2', tipe: 'setoran', jumlah: 5000000, tanggal: '2026-08-20', keterangan: 'Setoran Bulanan Agustus' },
-  { id: 't3', kendaraanId: 'v1', tipe: 'pengeluaran', jumlah: 1200000, tanggal: '2026-08-25', keterangan: 'Servis Rutin & Ganti Oli' },
-  { id: 't4', kendaraanId: 'v3', tipe: 'pengeluaran', jumlah: 2500000, tanggal: '2026-09-05', keterangan: 'Perbaikan Mesin' },
-  { id: 't5', kendaraanId: 'v2', tipe: 'setoran', jumlah: 5200000, tanggal: '2026-09-18', keterangan: 'Setoran Bulanan September' },
-  { id: 't6', kendaraanId: 'v1', tipe: 'setoran', jumlah: 4800000, tanggal: '2026-09-22', keterangan: 'Setoran Bulanan September' },
-  { id: 't7', kendaraanId: 'v1', tipe: 'setoran', jumlah: 5000000, tanggal: '2026-10-10', keterangan: 'Setoran Bulanan Oktober' },
-  { id: 't8', kendaraanId: 'v2', tipe: 'setoran', jumlah: 5500000, tanggal: '2026-10-15', keterangan: 'Setoran Bulanan Oktober' },
-  { id: 't9', kendaraanId: 'v3', tipe: 'pengeluaran', jumlah: 850000, tanggal: '2026-10-20', keterangan: 'Ganti Ban Belakang' },
-];
+  ];
 
 // Helper Format Rupiah
 const formatRupiah = (val) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val || 0);
 };
 
+// Helper ekstraksi string YYYY-MM-DD yang presisi dan aman dari geseran jam/UTC
+    const parseToStandardDateStr = (dateVal) => {
+      if (!dateVal) return '';
+      let str = String(dateVal).trim();
+      
+      // Jika string berformat ISO/UTC dari Apps Script (cth: "2026-08-14T17:00:00.000Z")
+      if (str.includes('T') || str.includes('Z')) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+          // Ambil tanggal, bulan, dan tahun sesuai lokal WIB (browser)
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          return `${year}-${month}-${day}`;
+        }
+      }
+      // Jika sudah berupa string tanggal murni "YYYY-MM-DD"
+      return str.split('T')[0].split(' ')[0];
+    };
+
+    // Helper Format Tanggal Tampilan (Hanya TGL-BLN-THN / DD/MM/YYYY)
+    const formatDateOnly = (dateVal) => {
+      if (!dateVal) return '-';
+      
+      try {
+        const cleanStr = parseToStandardDateStr(dateVal);
+
+        // Format YYYY-MM-DD -> ubah langsung ke DD/MM/YYYY
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+          const parts = cleanStr.split('-');
+          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        // Format YYYY/MM/DD
+        if (/^\d{4}\/\d{2}\/\d{2}$/.test(cleanStr)) {
+          const parts = cleanStr.split('/');
+          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        // Format DD/MM/YYYY atau DD-MM-YYYY
+        if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(cleanStr)) {
+          return cleanStr.replace(/-/g, '/');
+        }
+
+        return cleanStr;
+      } catch (err) {
+        return String(dateVal);
+      }
+    };
+
 // ====================================================
 // MASUKKAN WEB APP URL GOOGLE APPS SCRIPT ANDA DI SINI
 // ====================================================
-const GOOGLE_SHEETS_API = "https://script.google.com/macros/s/AKfycbzDt5SRzrDk-3C5yOMGlkSaRHrzoBJoRy_TtYOORdhvisIzYiozKKuZ2u5UnXFBqBKbsQ/exec";
+const GOOGLE_SHEETS_API = "https://script.google.com/macros/s/AKfycbzgBpPSep42amMizH8w84U1cQ0X4XX0ANuFJko6VcMVuSm2544_VtrDaX_klQMuYgU8Fg/exec";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -459,7 +497,7 @@ export default function App() {
               </div>
               <div>
                 <h1 className="font-bold text-lg leading-none tracking-tight">Setoran Mobil</h1>
-                <p className="text-[11px] text-slate-400 mt-1">Data Tersimpan Secara Lokal</p>
+                <p className="text-[11px] text-slate-400 mt-1">Data Tersimpan di Google Sheets</p>
               </div>
             </div>
 
@@ -674,7 +712,7 @@ export default function App() {
                           <span className={`font-bold text-xs block ${t.tipe === 'setoran' ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {t.tipe === 'setoran' ? '+' : '-'}{formatRupiah(t.jumlah)}
                           </span>
-                          <span className="text-[10px] text-slate-400">{t.tanggal}</span>
+                          <span className="text-[10px] text-slate-400">{formatDateOnly(t.tanggal)}</span>
                         </div>
                       </div>
 
@@ -809,7 +847,7 @@ export default function App() {
                       <div key={t.id} className="flex justify-between items-center text-xs py-1 border-b border-slate-50 last:border-0">
                         <div>
                           <span className="font-semibold text-slate-800 block">{veh?.plat}</span>
-                          <span className="text-[10px] text-slate-400">{t.tanggal} • {t.keterangan || '-'}</span>
+                          <span className="text-[10px] text-slate-400">{formatDateOnly(t.tanggal)} • {t.keterangan || '-'}</span>
                         </div>
                         <span className={`font-bold ${t.tipe === 'setoran' ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {t.tipe === 'setoran' ? '+' : '-'}{formatRupiah(t.jumlah)}
